@@ -105,7 +105,7 @@
             url: 'https://isach.info/' + url,
             onload: function(response) {
                 var $data = $(response.responseText),
-                    $chapter = $data.find('.ms_break, .ms_text, .story_poem'),
+                    $chapter = $data.find('.ms_break, .ms_text, .story_poem, .ms_end_note_title, .ms_end_note'),
 					chapter = [],
                     $next = $data.find('.next_chapter_link > a'),
                     nextUrl;
