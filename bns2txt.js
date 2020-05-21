@@ -32,7 +32,7 @@
 
 	function locVoice(string) {
 	  string = string.replace(/\bria\b/gi, 'dia');
-	  string = string.replace(/\bmu\b/gi, 'mư');
+	  string = string.replace(/\b[Mm]u \b/g, 'mư ');
 	  string = string.replace(/\bboa\b/gi, 'bo');
 	  string = string.replace(/\bah\b/gi, 'a');
 	  string = string.replace(/\buh\b/gi, 'ư');
