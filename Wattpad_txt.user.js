@@ -98,8 +98,13 @@
 			onload: function(response) {
 				var $data = $(response.responseText),
 					$chapter = $data.find('div.panel-reading'),
-					$next = $data.find('.next-part-link'),
+					$next,
 					nextUrl;
+					if ($data.find('.load-more-page').length > 0) {
+						$next = $data.find('.load-more-page');
+					} else {
+						$next = $data.find('.next-part-link');
+					}
 
 				if (endDownload) return;
 
