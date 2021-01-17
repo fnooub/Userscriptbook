@@ -100,7 +100,7 @@
 					$chapter = $data.find('div.panel-reading'),
 					$next,
 					nextUrl;
-					if ($data.find('.load-more-page').length > 0) {
+					if ($data.find('.load-more-page').length) {
 						$next = $data.find('.load-more-page');
 					} else {
 						$next = $data.find('.next-part-link');
@@ -115,7 +115,9 @@
 				} else {
 					$downloadStatus('yellow');
 
-					txt += LINE2 + chapTitle.toUpperCase() + LINE;
+					if (chapTitle.length) {
+						txt += LINE2 + chapTitle.toUpperCase() + LINE;
+					}
 
 					var $img = $chapter.find('img');
 
