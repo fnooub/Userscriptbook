@@ -1,15 +1,22 @@
 // ==UserScript==
-// @name         Wattpad txt
+// @name         Wattpad epub
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  try to take over the world!
 // @author       You
-// @match        https://www.wattpad.com/*
+// @match        https://www.wattpad.com/story/*
 // @require      https://code.jquery.com/jquery-3.5.1.min.js
+// @require      https://unpkg.com/jszip@3.1.5/dist/jszip.min.js
+// @require      https://unpkg.com/file-saver@2.0.2/dist/FileSaver.min.js
+// @require      https://unpkg.com/ejs@2.7.4/ejs.min.js
+// @require      https://unpkg.com/jepub@2.1.4/dist/jepub.min.js
+// @require      https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js?v=a834d46
 // @noframes
 // @connect      self
+// @connect      img.wattpad.com
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
+// @grant        GM.xmlHttpRequest
 // ==/UserScript==
 
 (function($, window, document, undefined) {
@@ -29,64 +36,82 @@
 	 */
 	var debugLevel = 2;
 
+	function cleanHtml(str) {
+		str = str.replace(/\s*Chương\s*\d+\s?:[^<\n]/, '');
+		str = str.replace(/[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\u10000-\u10FFFF]+/gm, ''); // eslint-disable-line
+		return '<div>' + str + '</div>';
+	}
 
 	function downloadFail(err) {
 		$downloadStatus('red');
 		titleError.push(chapTitle);
 
-		txt += LINE + url.toUpperCase() + LINE;
-
 		if (debugLevel == 2) console.log('%cError: ' + url, 'color:red;');
 		if (debugLevel > 0) console.error(err);
 	}
 
-	function saveEbook() {
-		var ebookTitle = $('h2.title').text().trim(),
-			fileName = ebookTitle,
-			fileType,
-			blob;
+	function beforeleaving(e) {
+		e.preventDefault();
+		e.returnValue = '';
+	}
 
+	function genEbook() {
+		jepub
+			.generate('blob', function (metadata) {
+				$download.html('Đang nén <strong>' + metadata.percent.toFixed(2) + '%</strong>');
+			})
+			.then(function (epubZipContent) {
+				document.title = '[⇓] ' + ebookTitle;
+				window.removeEventListener('beforeunload', beforeleaving);
+
+				$download
+					.attr({
+						href: window.URL.createObjectURL(epubZipContent),
+						download: ebookFilename,
+					})
+					.text('Hoàn thành')
+					.off('click');
+					$downloadStatus('greenyellow');
+
+				saveAs(epubZipContent, ebookFilename);
+			})
+			.catch(function (err) {
+				$downloadStatus('red');
+				console.error(err);
+			});
+	}
+
+	function saveEbook() {
 		if (endDownload) return;
 		endDownload = true;
-
-		var creditsTxt = 'Truyện được tải từ ' + location.href + LINE + 'Userscript được viết bởi: Fnooub',
-
-			beginEnd = '';
+		$download.html('Bắt đầu tạo EPUB');
 
 		if (titleError.length) {
-
-			titleError = LINE + 'Các chương lỗi: ' + titleError.join(', ') + LINE;
-
-			if (debugLevel > 0) console.warn('Các chương lỗi:', titleError);
+			titleError = '<p class="no-indent"><strong>Các chương lỗi: </strong>' + titleError.join(', ') + '</p>';
 		} else {
 			titleError = '';
 		}
+		beginEnd = '<p class="no-indent">Nội dung từ <strong>' + begin + '</strong> đến <strong>' + end + '</strong></p>';
 
+		jepub.notes(beginEnd + titleError + '<br /><br />' + credits);
 
-		if (begin !== end) beginEnd = 'Từ [' + begin + '] đến [' + end + ']';
-		// noi dung
-		txt = ebookTitle.toUpperCase() + LINE + beginEnd + LINE + titleError + creditsTxt + LINE2 + txt;
-
-		fileName += '.txt';
-		fileType = 'text/plain';
-
-		blob = new Blob([txt], {
-			encoding: 'UTF-8',
-			type: fileType + ';charset=UTF-8'
+		GM.xmlHttpRequest({
+			method: 'GET',
+			url: ebookCover,
+			responseType: 'arraybuffer',
+			onload: function (response) {
+				try {
+					jepub.cover(response.response);
+				} catch (err) {
+					console.error(err);
+				}
+				genEbook();
+			},
+			onerror: function (err) {
+				console.error(err);
+				genEbook();
+			},
 		});
-
-		$download.attr({
-			href: window.URL.createObjectURL(blob),
-			download: fileName
-		}).text('Tải xong').off('click');
-		$downloadStatus('greenyellow');
-
-		$win.off('beforeunload');
-
-		document.title = '[⇓] ' + ebookTitle;
-		if (debugLevel === 2) console.log('%cDownload Finished!', 'color:blue;');
-		if (debugLevel > 0) console.timeEnd('Truyenfull Downloader');
-
 	}
 
 	function getContent() {
@@ -98,6 +123,11 @@
 			onload: function(response) {
 				var $data = $(response.responseText),
 					$chapter = $data.find('div.panel-reading'),
+					$notContent = $chapter.find('iframe, script, style, a, span, figcaption'),
+					$referrer = $chapter.find('[style]').filter(function () {
+						return this.style.fontSize === '1px' || this.style.fontSize === '0px' || this.style.color === 'white';
+					}),
+					chapContent,
 					$next,
 					nextUrl;
 					if ($data.find('.load-more-page').length) {
@@ -108,30 +138,30 @@
 
 				if (endDownload) return;
 
-				chapTitle = $data.find('h1').text().trim();
+				if ($data.find('h1').length) {
+					chapTitle = $data.find('h1').text().trim();
+				} else {
+					var chapCon = url.match(/\/page\/(\d+)/)[1];
+					chapTitle = $data.find('h3.part-restart-chapter').text().trim();
+					chapTitle = chapTitle + ' (' + (chapCon-1) + ')';
+				}
 
 				if (!$chapter.length) {
-					downloadFail('Missing content.');
+						downloadFail('Missing content.');
 				} else {
 					$downloadStatus('yellow');
 
-					if (chapTitle.length) {
-						txt += LINE2 + chapTitle.toUpperCase() + LINE;
-					}
-
 					var $img = $chapter.find('img');
-
 					if ($img.length) $img.replaceWith(function() {
-						return LINE + this.src + LINE;
+						return '<br /><a href="' + this.src + '">Click để xem ảnh</a><br />';
 					});
 
-						$chapter = $chapter.html().replace(/\r?\n+/g, ' ');
-						$chapter = $chapter.replace(/<br\s*[\/]?>/gi, '\n');
-						$chapter = $chapter.replace(/<(p|div)[^>]*>/gi, '\n').replace(/<\/(p|div)>/gi, '\n');
-						$chapter = $($.parseHTML($chapter));
+					if ($notContent.length) $notContent.remove();
+					if ($referrer.length) $referrer.remove();
 
-						txt += $chapter.text().trim().replace(/\n\n+/g, '\n\n');
+					chapContent = cleanHtml($chapter.find('pre').html());
 
+					jepub.add(chapTitle, chapContent);
 
 					count++;
 
@@ -173,20 +203,8 @@
 	}
 
 
-	var txt = '',
-		url = '',
-
-		chapTitle = '',
-
-		LINE = '\r\n\r\n',
-		LINE2 = '\r\n\r\n\r\n\r\n',
-
-		endDownload = false,
-
-
-		pageName = document.title,
+	var pageName = document.title,
 		$win = $(window),
-
 		$download = $('<a>', {
 			style: 'background-color:lightblue;',
 			href: '#download',
@@ -195,16 +213,54 @@
 		$downloadStatus = function(status) {
 			$download.css("background-color", "").css("background-color", status);
 		},
-
+		txt = '',
+		url = '',
+		chapTitle = '',
+		endDownload = false,
 		count = 0,
 		begin = '',
 		end = '',
+		beginEnd = '',
+		titleError = [],
 
-		titleError = [];
+		ebookTitle = $('h1').text().trim(),
+		ebookAuthor = '',
+		ebookCover = $('.cover img').attr('src'),
+		ebookDesc = $('.description').text().trim().replace(/\n+/g, '<br />'),
+		ebookType = [],
+		beginEnd = '',
+		titleError = [],
+		host = location.host,
+		pathname = location.pathname,
+		referrer = location.protocol + '//' + host + pathname,
+		ebookFilename = ebookTitle + '.epub',
+		credits = '<p>Truyện được tải từ <a href="' + referrer + '">' + host + '</a></p><p>Userscript được viết bởi: <a href="https://lelinhtinh.github.io/jEpub/">Zzbaivong</a></p>',
+		jepub,
+		$listChapter = $('.table-of-contents');
 
 
-	url = location.href;
-	if (debugLevel === 2) console.log(url);
+	var $ebookType = $('.tag-items a');
+	if ($ebookType.length)
+		$ebookType.each(function () {
+			ebookType.push($(this).text().trim());
+		});
+
+	jepub = new jEpub();
+	jepub
+		.init({
+			title: ebookTitle,
+			author: ebookAuthor,
+			publisher: host,
+			description: ebookDesc,
+			tags: ebookType,
+		})
+		.uuid(referrer);
+
+	if (!$listChapter.length) return;
+
+	url = $listChapter.find('a:eq(0)').attr('href');
+	url = 'https://www.wattpad.com' + url;
+	if (debugLevel == 2) console.log(url);
 
 	$download.insertAfter('h1');
 
@@ -220,7 +276,7 @@
 			$download.off('contextmenu');
 		}
 
-		if (debugLevel > 0) console.time('Truyenfull Downloader');
+		if (debugLevel > 0) console.time('Epub Downloader');
 		if (debugLevel === 2) console.log('%cDownload Start!', 'color:blue;');
 		document.title = '[...] Vui lòng chờ trong giây lát';
 
