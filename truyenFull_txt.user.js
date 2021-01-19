@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         TF txt
+// @name         Truyenfull txt
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.1.2
 // @description  try to take over the world!
 // @author       You
 // @match        https://truyenfull.vn/*/
@@ -29,6 +29,18 @@
 	 */
 	var debugLevel = 2;
 
+	function html2text(html, noBr = false) {
+		html = html.replace(/<style([\s\S]*?)<\/style>/gi, '');
+		html = html.replace(/<script([\s\S]*?)<\/script>/gi, '');
+		html = html.replace(/<\/(div|li|dd|h[1-6])>/gi, '\n');
+		html = html.replace(/<\/p>/gi, '\n');
+		html = html.replace(/<(br|hr)\s*[/]?>/gi, '\n');
+		html = html.replace(/<li>/ig, '+ ');
+		html = html.replace(/<[^>]+>/g, '');
+		html = html.replace(/\n{3,}/g, '\n\n');
+		if (noBr) html = html.replace(/\n+/g, ' ');
+		return html;
+	}
 
 	function downloadFail(err) {
 		$downloadStatus('red');
@@ -94,7 +106,7 @@
 		$download.attr({
 			href: window.URL.createObjectURL(blob),
 			download: fileName
-		}).text('Tải xong').off('click');
+		}).text('Tải xong, click để tải về').off('click');
 		$downloadStatus('greenyellow');
 
 		$win.off('beforeunload');
@@ -108,11 +120,9 @@
 	function getContent() {
 		if (endDownload) return;
 
-		GM_xmlhttpRequest({
-			method: 'GET',
-			url: url,
-			onload: function(response) {
-				var $data = $(response.responseText),
+		$.get(url)
+			.done(function (response) {
+				var $data = $(response),
 					$chapter = $data.find('.chapter-c'),
 					$next = $data.find('#next_chap'),
 					nextUrl;
@@ -131,15 +141,14 @@
 					var $img = $chapter.find('img');
 
 					if ($img.length) $img.replaceWith(function() {
-						return LINE + this.src + LINE;
+						return LINE + 'Xem ảnh => ' + this.src + LINE;
 					});
 
-						$chapter = $chapter.html().replace(/\r?\n+/g, ' ');
-						$chapter = $chapter.replace(/<br\s*[\/]?>/gi, '\n');
-						$chapter = $chapter.replace(/<(p|div)[^>]*>/gi, '').replace(/<\/(p|div)>/gi, '\n');
-						$chapter = $($.parseHTML($chapter));
+					// html2text
+					$chapter = html2text($chapter.html());
+					$chapter = $($.parseHTML($chapter));
 
-						txt += $chapter.text().trim().replace(/\n/g, '\r\n');
+					txt += $chapter.text().trim();
 
 
 					count++;
@@ -173,12 +182,11 @@
 
 				url = nextUrl;
 				getContent();
-			},
-			onerror: function(err) {
+			})
+			.fail(function (err) {
 				downloadFail(err);
 				saveEbook();
-			}
-		});
+			});
 	}
 
 
@@ -199,7 +207,7 @@
 		$listChapter = $('#list-chapter'),
 
 		$download = $('<a>', {
-			style: 'background-color:lightblue;',
+			style: 'background-color:lightblue; padding: 5px;',
 			href: '#download',
 			text: 'Tải xuống'
 		}),
