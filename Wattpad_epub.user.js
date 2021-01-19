@@ -13,6 +13,7 @@
 // @require      https://greasemonkey.github.io/gm4-polyfill/gm4-polyfill.js?v=a834d46
 // @noframes
 // @connect      self
+// @connect      img.wattpad.com
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
 // @grant        GM.xmlHttpRequest
@@ -122,6 +123,11 @@
 			onload: function(response) {
 				var $data = $(response.responseText),
 					$chapter = $data.find('div.panel-reading'),
+					$notContent = $chapter.find('iframe, script, style, a, span, figcaption'),
+					$referrer = $chapter.find('[style]').filter(function () {
+						return this.style.fontSize === '1px' || this.style.fontSize === '0px' || this.style.color === 'white';
+					}),
+					chapContent,
 					$next,
 					nextUrl;
 					if ($data.find('.load-more-page').length) {
@@ -135,9 +141,9 @@
 				if ($data.find('h1').length) {
 					chapTitle = $data.find('h1').text().trim();
 				} else {
-					var chapCon = url.replace(/.+\/page\/(\d+)/, '$1');
+					var chapCon = url.match(/\/page\/(\d+)/)[1];
 					chapTitle = $data.find('h3.part-restart-chapter').text().trim();
-					chapTitle = chapTitle + '-' + chapCon;
+					chapTitle = chapTitle + ' (' + (chapCon-1) + ')';
 				}
 
 				if (!$chapter.length) {
@@ -150,11 +156,12 @@
 						return '<br /><a href="' + this.src + '">Click để xem ảnh</a><br />';
 					});
 
-					$chapter = $chapter.html();
-					$chapter = $chapter.replace(/<span.+?>.+?<\/span>/gi, '');
-					$chapter = $chapter.replace(/<\/?pre>/gi, '');
+					if ($notContent.length) $notContent.remove();
+					if ($referrer.length) $referrer.remove();
 
-					jepub.add(chapTitle, cleanHtml($chapter));
+					chapContent = cleanHtml($chapter.find('pre').html());
+
+					jepub.add(chapTitle, chapContent);
 
 					count++;
 
@@ -262,14 +269,14 @@
 
 		if (e.type === 'contextmenu') {
 			var beginUrl = prompt("Nhập URL chương truyện bắt đầu tải:", url);
-			if (beginUrl !== null) url = beginUrl.replace(/https:\/\/bachngocsach\.com/gi, '').trim();
+			if (beginUrl !== null) url = beginUrl.trim();
 
 			$download.off('click');
 		} else {
 			$download.off('contextmenu');
 		}
 
-		if (debugLevel > 0) console.time('Bachngocsach Downloader');
+		if (debugLevel > 0) console.time('Epub Downloader');
 		if (debugLevel === 2) console.log('%cDownload Start!', 'color:blue;');
 		document.title = '[...] Vui lòng chờ trong giây lát';
 
