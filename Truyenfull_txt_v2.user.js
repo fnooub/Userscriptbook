@@ -190,22 +190,8 @@
 	}
 
 
-	var txt = '',
-		url = '',
-
-		chapTitle = '',
-
-		LINE = '\r\n\r\n',
-		LINE2 = '\r\n\r\n\r\n\r\n',
-
-		endDownload = false,
-
-
-		pageName = document.title,
+	var pageName = document.title,
 		$win = $(window),
-
-		$listChapter = $('#list-chapter'),
-
 		$download = $('<a>', {
 			style: 'background-color:lightblue; padding: 5px;',
 			href: '#download',
@@ -214,12 +200,19 @@
 		$downloadStatus = function(status) {
 			$download.css("background-color", "").css("background-color", status);
 		},
-
+		txt = '',
+		url = '',
+		chapTitle = '',
+		endDownload = false,
 		count = 0,
 		begin = '',
 		end = '',
+		titleError = [],
+		LINE = '\r\n\r\n',
+		LINE2 = '\r\n\r\n\r\n\r\n',
+		$listChapter = $('#list-chapter');
 
-		titleError = [];
+
 
 
 	if (!$listChapter.length) return;
@@ -242,7 +235,7 @@
 			$download.off('contextmenu');
 		}
 
-		if (debugLevel > 0) console.time('Truyenfull Downloader');
+		if (debugLevel > 0) console.time('Epub Downloader');
 		if (debugLevel === 2) console.log('%cDownload Start!', 'color:blue;');
 		document.title = '[...] Vui lòng chờ trong giây lát';
 
