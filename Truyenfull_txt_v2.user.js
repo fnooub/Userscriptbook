@@ -53,54 +53,43 @@
 	}
 
 	function saveEbook() {
-		var ebookTitle = $('h1').text().trim(),
-			fileName = ebookTitle,
-			fileType,
-			blob;
-
 		if (endDownload) return;
 		endDownload = true;
 
-		var ebookAuthor = $('.info a[itemprop="author"]').text().trim(),
-			$ebookType = $('.info a[itemprop="genre"]'),
+		var ebookTitle = $('h1').text().trim(),
+			ebookAuthor = $('.info a[itemprop="author"]').text().trim(),
 			ebookType = [],
-
+			fileName = ebookTitle + '.txt',
+			fileType,
+			blob,
 			creditsTxt = LINE2 + 'Truyện được tải từ ' + location.href + LINE + 'Userscript được viết bởi: Zzbaivong' + LINE2,
-
 			beginEnd = '';
 
+		var $ebookType = $('.info a[itemprop="genre"]');
 		if ($ebookType.length) {
 			$ebookType.each(function() {
 				ebookType.push($(this).text().trim());
 			});
 			ebookType = ebookType.join(', ');
-
 			ebookType = LINE + 'Thể loại: ' + ebookType;
-
 		} else {
 			ebookType = '';
 		}
 
 		if (titleError.length) {
-
 			titleError = LINE + 'Các chương lỗi: ' + titleError.join(', ') + LINE;
-
 			if (debugLevel > 0) console.warn('Các chương lỗi:', titleError);
 		} else {
 			titleError = '';
 		}
 
-
-			if (begin !== end) beginEnd = LINE2 + 'Từ [' + begin + '] đến [' + end + ']';
-			// noi dung
-			txt = ebookTitle.toUpperCase() + LINE + 'Tác giả: ' + ebookAuthor + ebookType + beginEnd + titleError + creditsTxt + txt;
-
-			fileName += '.txt';
-			fileType = 'text/plain';
+		if (begin !== end) beginEnd = LINE2 + 'Từ [' + begin + '] đến [' + end + ']';
+		// noi dung
+		txt = ebookTitle.toUpperCase() + LINE + 'Tác giả: ' + ebookAuthor + ebookType + beginEnd + titleError + creditsTxt + txt;
 
 		blob = new Blob([txt], {
 			encoding: 'UTF-8',
-			type: fileType + ';charset=UTF-8'
+			type: 'text/plain;charset=UTF-8'
 		});
 
 		$download.attr({
@@ -113,8 +102,7 @@
 
 		document.title = '[⇓] ' + ebookTitle;
 		if (debugLevel === 2) console.log('%cDownload Finished!', 'color:blue;');
-		if (debugLevel > 0) console.timeEnd('Truyenfull Downloader');
-
+		if (debugLevel > 0) console.timeEnd('Text Downloader');
 	}
 
 	function getContent() {
@@ -211,9 +199,6 @@
 		LINE = '\r\n\r\n',
 		LINE2 = '\r\n\r\n\r\n\r\n',
 		$listChapter = $('#list-chapter');
-
-
-
 
 	if (!$listChapter.length) return;
 
