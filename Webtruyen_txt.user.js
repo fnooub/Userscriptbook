@@ -30,6 +30,7 @@
 	var debugLevel = 2;
 
 	function html2text(html, noBr = false) {
+		html = html.replace(/\r?\n+/g, ' ');
 		html = html.replace(/<style([\s\S]*?)<\/style>/gi, '');
 		html = html.replace(/<script([\s\S]*?)<\/script>/gi, '');
 		html = html.replace(/<\/(div|li|dd|h[1-6])>/gi, '\n');
