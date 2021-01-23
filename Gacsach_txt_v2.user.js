@@ -5,6 +5,8 @@
 // @description  try to take over the world!
 // @author       You
 // @match        https://gacsach.com/*.full
+// @match        https://gacsach.com/doc-sach-truc-tuyen/*/*.html
+// @match        https://gacsach.com/doc-online/*
 // @require      https://code.jquery.com/jquery-3.5.1.min.js
 // @noframes
 // @connect      self
@@ -30,6 +32,7 @@
 	var debugLevel = 2;
 
 	function html2text(html, noBr = false) {
+		html = html.replace(/\r?\n/g, ' ');
 		html = html.replace(/<style([\s\S]*?)<\/style>/gi, '');
 		html = html.replace(/<script([\s\S]*?)<\/script>/gi, '');
 		html = html.replace(/<\/(div|li|dd|h[1-6])>/gi, '\n');
@@ -38,6 +41,7 @@
 		html = html.replace(/<li>/ig, '+ ');
 		html = html.replace(/<[^>]+>/g, '');
 		html = html.replace(/\n{3,}/g, '\n\n');
+		html = html.replace(/  +/g, ' ');
 		if (noBr) html = html.replace(/\n+/g, ' ');
 		return html;
 	}
@@ -56,8 +60,8 @@
 		if (endDownload) return;
 		endDownload = true;
 
-		var ebookTitle = $('h1').text().trim(),
-			ebookAuthor = $('.field-items:eq(2)').text().trim(),
+		var ebookTitle = $('h1.page-title').text().trim(),
+			ebookAuthor = $('.field-name-field-author a').text().trim(),
 			ebookType = [],
 			fileName = ebookTitle + '.txt',
 			fileType,
@@ -65,7 +69,7 @@
 			creditsTxt = LINE2 + 'Truyện được tải từ ' + location.href + LINE + 'Userscript được viết bởi: Zzbaivong' + LINE2,
 			beginEnd = '';
 
-		var $ebookType = $('.field-items:eq(3) a');
+		var $ebookType = $('.field-name-field-mucsach a');
 		if ($ebookType.length) {
 			$ebookType.each(function() {
 				ebookType.push($(this).text().trim());
@@ -118,7 +122,7 @@
 				if (endDownload) return;
 
 				chapTitle = $data.find('h1').text().trim();
-				chapTitle = chapTitle.replace(/.+? - ((Phần \d+ - )?Chương \d.+)/gi, '$1');
+				//chapTitle = chapTitle.replace(/.+((Phần \d+ - )?Chương \d.+)/gi, '$1');
 
 				if (!$chapter.length) {
 					downloadFail('Missing content.');
@@ -198,12 +202,17 @@
 		end = '',
 		titleError = [],
 		LINE = '\r\n\r\n',
-		LINE2 = '\r\n\r\n\r\n\r\n';
+		LINE2 = '\r\n\r\n\r\n\r\n',
+		$listChapter = $('ul.menu:eq(3) .leaf a:first');
 
-	url = $('#idnx').attr('href');
-	if (!url.length) return;
+	if (!$listChapter.length) {
+		url = $('#idnx').attr('href');
+	} else {
+		url = $listChapter.attr('href');
+	}
 	if (debugLevel === 2) console.log(url);
-	$download.insertAfter('h1');
+
+	$download.insertAfter('h1.page-title');
 
 	$download.one('click contextmenu', function(e) {
 		e.preventDefault();
