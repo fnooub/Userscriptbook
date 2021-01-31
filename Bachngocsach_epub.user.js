@@ -19,256 +19,258 @@
 // ==/UserScript==
 
 (function($, window, document, undefined) {
-	'use strict';
+  'use strict';
 
-	/**
-	 * Export data to a text file (.txt)
-	 * @type {Boolean} true  : txt
-	 *                 false : html
-	 */
+  /**
+   * Enable logging in Console
+   * @type {Number} 0 : Disable
+   *                1 : Error
+   *                2 : Info + Error
+   */
+  var debugLevel = 2;
 
-	/**
-	 * Enable logging in Console
-	 * @type {Number} 0 : Disable
-	 *                1 : Error
-	 *                2 : Info + Error
-	 */
-	var debugLevel = 2;
+  function cleanHtml(str) {
+    str = str.replace(/\s*Chương\s*\d+\s?:[^<\n]/, '');
+    str = str.replace(/[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\u10000-\u10FFFF]+/gm, ''); // eslint-disable-line
+    return '<div>' + str + '</div>';
+  }
 
-	function cleanHtml(str) {
-		str = str.replace(/\s*Chương\s*\d+\s?:[^<\n]/, '');
-		str = str.replace(/[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\u10000-\u10FFFF]+/gm, ''); // eslint-disable-line
-		return '<div>' + str + '</div>';
-	}
+  function downloadFail(err) {
+    $downloadStatus('red');
+    titleError.push(chapTitle);
 
-	function downloadFail(err) {
-		$downloadStatus('red');
-		titleError.push(chapTitle);
+    if (debugLevel == 2) console.log('%cError: ' + url, 'color:red;');
+    if (debugLevel > 0) console.error(err);
+  }
 
-		if (debugLevel == 2) console.log('%cError: ' + url, 'color:red;');
-		if (debugLevel > 0) console.error(err);
-	}
+  function beforeleaving(e) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
 
-	function beforeleaving(e) {
-		e.preventDefault();
-		e.returnValue = '';
-	}
+  function genEbook() {
+    jepub
+      .generate('blob', function (metadata) {
+        $download.html('Đang nén <strong>' + metadata.percent.toFixed(2) + '%</strong>');
+      })
+      .then(function (epubZipContent) {
+        document.title = '[⇓] ' + ebookTitle;
+        window.removeEventListener('beforeunload', beforeleaving);
 
-	function genEbook() {
-		jepub
-			.generate('blob', function (metadata) {
-				$download.html('Đang nén <strong>' + metadata.percent.toFixed(2) + '%</strong>');
-			})
-			.then(function (epubZipContent) {
-				document.title = '[⇓] ' + ebookTitle;
-				window.removeEventListener('beforeunload', beforeleaving);
+        $download
+          .attr({
+            href: window.URL.createObjectURL(epubZipContent),
+            download: ebookFilename,
+          })
+          .text('Hoàn thành')
+          .off('click');
+          $downloadStatus('greenyellow');
 
-				$download
-					.attr({
-						href: window.URL.createObjectURL(epubZipContent),
-						download: ebookFilename,
-					})
-					.text('Hoàn thành')
-					.off('click');
-					$downloadStatus('greenyellow');
+        saveAs(epubZipContent, ebookFilename);
+      })
+      .catch(function (err) {
+        $downloadStatus('red');
+        console.error(err);
+      });
+  }
 
-				saveAs(epubZipContent, ebookFilename);
-			})
-			.catch(function (err) {
-				$downloadStatus('red');
-				console.error(err);
-			});
-	}
+  function saveEbook() {
+    if (endDownload) return;
+    endDownload = true;
+    $download.html('Bắt đầu tạo EPUB');
 
-	function saveEbook() {
-		if (endDownload) return;
-		endDownload = true;
-		$download.html('Bắt đầu tạo EPUB');
+    if (titleError.length) {
+      titleError = '<p class="no-indent"><strong>Các chương lỗi: </strong>' + titleError.join(', ') + '</p>';
+    } else {
+      titleError = '';
+    }
+    beginEnd = '<p class="no-indent">Nội dung từ <strong>' + begin + '</strong> đến <strong>' + end + '</strong></p>';
 
-		if (titleError.length) {
-			titleError = '<p class="no-indent"><strong>Các chương lỗi: </strong>' + titleError.join(', ') + '</p>';
-		} else {
-			titleError = '';
-		}
-		beginEnd = '<p class="no-indent">Nội dung từ <strong>' + begin + '</strong> đến <strong>' + end + '</strong></p>';
+    jepub.notes(beginEnd + titleError + '<br /><br />' + credits);
 
-		jepub.notes(beginEnd + titleError + '<br /><br />' + credits);
+    GM.xmlHttpRequest({
+      method: 'GET',
+      url: ebookCover,
+      responseType: 'arraybuffer',
+      onload: function (response) {
+        try {
+          jepub.cover(response.response);
+        } catch (err) {
+          console.error(err);
+        }
+        genEbook();
+      },
+      onerror: function (err) {
+        console.error(err);
+        genEbook();
+      },
+    });
+  }
 
-		GM.xmlHttpRequest({
-			method: 'GET',
-			url: ebookCover,
-			responseType: 'arraybuffer',
-			onload: function (response) {
-				try {
-					jepub.cover(response.response);
-				} catch (err) {
-					console.error(err);
-				}
-				genEbook();
-			},
-			onerror: function (err) {
-				console.error(err);
-				genEbook();
-			},
-		});
-	}
+  function getContent(pageId) {
+    if (endDownload) return;
 
-	function getContent() {
-		if (endDownload) return;
+    $.get(url)
+      .done(function (response) {
+        var $data = $(response),
+          $chapter = $data.find('#noi-dung'),
+          $notContent = $chapter.find('iframe, script, style, a'),
+          $referrer = $chapter.find('[style]').filter(function () {
+            return this.style.fontSize === '1px' || this.style.fontSize === '0px' || this.style.color === 'white';
+          }),
+          chapContent,
+          $next = $data.find('a.page-next'),
+          nextUrl;
 
-		GM_xmlhttpRequest({
-			method: 'GET',
-			url: 'https://bachngocsach.com' + url,
-			onload: function(response) {
-				var $data = $(response.responseText),
-					$chapter = $data.find('#noi-dung'),
-					$next = $data.find('.page-next'),
-					nextUrl;
+        if (endDownload) return;
 
-				if (endDownload) return;
+        chapTitle = $data.find('#chuong-title').text().trim();
+        if (chapTitle === '') chapTitle = 'Chương ' + count;
 
-				chapTitle = $data.find('#chuong-title').text().trim();
+        if (!$chapter.length) {
+          downloadFail('Missing content.');
+        } else {
+          $downloadStatus('yellow');
 
-				if (!$chapter.length) {
-						downloadFail('Missing content.');
-				} else {
-					$downloadStatus('yellow');
+          var $img = $chapter.find('img');
+          if ($img.length)
+            $img.replaceWith(function () {
+              return '<br /><a href="' + this.src + '">Click để xem ảnh</a><br />';
+            });
 
-					var $img = $chapter.find('img');
-					if ($img.length) $img.replaceWith(function() {
-						return '<br /><a href="' + this.src + '">Click để xem ảnh</a><br />';
-					});
+          if ($notContent.length) $notContent.remove();
+          if ($referrer.length) $referrer.remove();
 
-					jepub.add(chapTitle, cleanHtml($chapter.html()));
+          if ($chapter.text().trim() === '') {
+            chapContent = 'Nội dung không có';
+          } else {
+            chapContent = cleanHtml($chapter.html());
+          }
+        }
 
-					count++;
+        jepub.add(chapTitle, chapContent);
 
-					if (debugLevel === 2) console.log('%cComplete: ' + url, 'color:green;');
-				}
+        if (count === 0) begin = chapTitle;
+        end = chapTitle;
 
-				if (count === 1) begin = chapTitle;
-				end = chapTitle;
+        $download.text('Đang tải chương: ' + count);
 
-				$download.text('Đang tải chương: ' + count);
-				document.title = '[' + count + '] ' + pageName;
+        ++count;
+        document.title = '[' + count + '] ' + pageName;
 
-				if ($next.hasClass('disabled')) {
-					saveEbook();
-					return;
-				}
+        if (debugLevel === 2) console.log('%cComplete: ' + url, 'color:green;');
 
-				if ($next.length) {
-					nextUrl = $next.attr('href');
+        if ($next.hasClass('disabled')) {
+          saveEbook();
+          return;
+        }
 
-					if (nextUrl === url || nextUrl === '') {
-						downloadFail('Next url error.');
-						saveEbook();
-						return;
-					}
-				} else {
-					saveEbook();
-					return;
-				}
+        if ($next.length) {
+          nextUrl = $next.attr('href');
 
-				url = nextUrl;
-				getContent();
-			},
-			onerror: function(err) {
-				downloadFail(err);
-				saveEbook();
-			}
-		});
-	}
+          if (nextUrl === url || nextUrl === '') {
+            downloadFail('Next url error.');
+            saveEbook();
+            return;
+          }
+        } else {
+          saveEbook();
+          return;
+        }
 
+        url = nextUrl;
+        getContent();
+      })
+      .fail(function (err) {
+        chapTitle = null;
+        downloadFail(err);
+        saveEbook();
+      });
 
-	var pageName = document.title,
-		$win = $(window),
-		$download = $('<a>', {
-			style: 'background-color:lightblue;',
-			href: '#download',
-			text: 'Tải xuống'
-		}),
-		$downloadStatus = function(status) {
-			$download.css("background-color", "").css("background-color", status);
-		},
-		txt = '',
-		url = '',
-		chapTitle = '',
-		endDownload = false,
-		count = 0,
-		begin = '',
-		end = '',
-		beginEnd = '',
-		titleError = [],
+  }
 
-		ebookTitle = $('h1').text().trim(),
-		ebookAuthor = $('#tacgia a').text().trim(),
-		ebookCover = $('#anhbia img').attr('src'),
-		ebookDesc = $('#gioithieu').html(),
-		ebookType = [],
-		beginEnd = '',
-		titleError = [],
-		host = location.host,
-		pathname = location.pathname,
-		referrer = location.protocol + '//' + host + pathname,
-		ebookFilename = pathname.replace('/reader/', '') + '.epub',
-		credits = '<p>Truyện được tải từ <a href="' + referrer + '">' + host + '</a></p><p>Userscript được viết bởi: <a href="https://lelinhtinh.github.io/jEpub/">Zzbaivong</a></p>',
-		jepub,
-		$listChapter = $('#chuong-list');
+  var pageName = document.title,
+    $win = $(window),
+    $download = $('<a>', {
+      style: 'background-color:lightblue;',
+      href: '#download',
+      text: 'Tải xuống'
+    }),
+    $downloadStatus = function(status) {
+      $download.css("background-color", "").css("background-color", status);
+    },
+    txt = '',
+    url = '',
+    chapTitle = '',
+    endDownload = false,
+    count = 0,
+    begin = '',
+    end = '',
+    beginEnd = '',
+    titleError = [],
+
+    ebookTitle = $('h1').text().trim(),
+    ebookAuthor = $('#tacgia a').text().trim(),
+    ebookCover = $('#anhbia img').attr('src'),
+    ebookDesc = $('#gioithieu').html(),
+    ebookType = [],
+    beginEnd = '',
+    titleError = [],
+    host = location.host,
+    pathname = location.pathname,
+    referrer = location.protocol + '//' + host + pathname,
+    ebookFilename = pathname.replace('/reader/', '') + '.epub',
+    credits = '<p>Truyện được tải từ <a href="' + referrer + '">' + host + '</a></p><p>Userscript được viết bởi: <a href="https://lelinhtinh.github.io/jEpub/">Zzbaivong</a></p>',
+    jepub,
+    $listChapter = $('#chuong-list');
 
 
-	var $ebookType = $('#theloai a');
-	if ($ebookType.length)
-		$ebookType.each(function () {
-			ebookType.push($(this).text().trim());
-		});
+  var $ebookType = $('#theloai a');
+  if ($ebookType.length)
+    $ebookType.each(function () {
+      ebookType.push($(this).text().trim());
+    });
 
-	jepub = new jEpub();
-	jepub
-		.init({
-			title: ebookTitle,
-			author: ebookAuthor,
-			publisher: host,
-			description: ebookDesc,
-			tags: ebookType,
-		})
-		.uuid(referrer);
+  jepub = new jEpub();
+  jepub
+    .init({
+      title: ebookTitle,
+      author: ebookAuthor,
+      publisher: host,
+      description: ebookDesc,
+      tags: ebookType,
+    })
+    .uuid(referrer);
 
-	if (!$listChapter.length) return;
+  if (!$listChapter.length) return;
 
-	url = $listChapter.find('a:eq(1)').attr('href');
-	if (debugLevel == 2) console.log(url);
+  url = $listChapter.find('a:eq(1)').attr('href');
+  if (debugLevel == 2) console.log(url);
 
-	$download.insertAfter('.content-header');
+  $download.insertAfter('.content-header');
 
-	$download.one('click contextmenu', function(e) {
-		e.preventDefault();
 
-		if (e.type === 'contextmenu') {
-			var beginUrl = prompt("Nhập URL chương truyện bắt đầu tải:", url);
-			if (beginUrl !== null) url = beginUrl.replace(/https:\/\/bachngocsach\.com/gi, '').trim();
+  $download.one('click contextmenu', function (e) {
+    e.preventDefault();
+    document.title = '[...] Vui lòng chờ trong giây lát';
 
-			$download.off('click');
-		} else {
-			$download.off('contextmenu');
-		}
+    if (e.type === 'contextmenu') {
+      var beginUrl = prompt("Nhập URL chương truyện bắt đầu tải:", url);
+      if (beginUrl !== null) url = beginUrl.replace('https://bachngocsach.com', '').trim();
+      $download.off('click');
+    } else {
+      $download.off('contextmenu');
+    }
 
-		if (debugLevel > 0) console.time('Bachngocsach Downloader');
-		if (debugLevel === 2) console.log('%cDownload Start!', 'color:blue;');
-		document.title = '[...] Vui lòng chờ trong giây lát';
+    window.removeEventListener('beforeunload', beforeleaving);
 
-		getContent();
+    $download.one('click', function (e) {
+      e.preventDefault();
+      saveEbook();
+    });
 
-		$win.on('beforeunload', function() {
-			return 'Truyện đang được tải xuống...';
-		});
-
-		$download.one('click', function(e) {
-			e.preventDefault();
-
-			saveEbook();
-		});
-	});
+    getContent();
+  });
 
 
 })(jQuery, window, document);
