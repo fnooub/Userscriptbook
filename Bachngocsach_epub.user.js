@@ -247,7 +247,7 @@
   url = $listChapter.find('a:eq(1)').attr('href');
   if (debugLevel == 2) console.log(url);
 
-  $download.insertAfter('.content-header');
+  $download.insertAfter('#truyen-nav a:last');
 
 
   $download.one('click contextmenu', function (e) {
