@@ -232,7 +232,7 @@
     endDownload = false,
     ebookTitle = $('h1').text().trim(),
     ebookAuthor = $('#tacgia a').text().trim(),
-    ebookCover = $('#anhbia img').data('src'),
+    ebookCover = $('#anhbia img').attr('src'),
     ebookDesc = $('#gioithieu').html(),
     ebookType = [],
     beginEnd = '',
@@ -240,7 +240,7 @@
     host = location.host,
     pathname = location.pathname,
     referrer = location.protocol + '//' + host + pathname,
-    ebookFilename = pathname.slice(8, -1) + '.epub',
+    ebookFilename = pathname.slice(8) + '.epub',
     credits =
       '<p>Truyện được tải từ <a href="' +
       referrer +
