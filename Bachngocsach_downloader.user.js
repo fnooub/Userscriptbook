@@ -272,7 +272,7 @@
     e.preventDefault();
     document.title = '[...] Vui lòng chờ trong giây lát';
 
-    var firstChap = downloadId($novelInfo.find('a:first').attr('href'));
+    var firstChap = downloadId($novelInfo.find('a.chuong-link:first').attr('href'));
     var startFrom = firstChap;
 
     if (e.type === 'contextmenu') {
@@ -283,7 +283,7 @@
       $download.off('contextmenu');
     }
 
-    console.log(startFrom);
+    console.log('%cBắt đầu: ' + startFrom, 'color:blue;');
 
     window.removeEventListener('beforeunload', beforeleaving);
 
