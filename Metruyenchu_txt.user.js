@@ -190,6 +190,17 @@
 		chapList = [],
 		chapListSize = 0,
 		chapId = '';
+    // lay api thu cong
+    var proxied = window.XMLHttpRequest.prototype.open;
+    window.XMLHttpRequest.prototype.open = function() {
+        console.log( arguments );
+        if (arguments[1].includes('v2/chapters') === true) {
+          var person = prompt("Copy api, chuot phai dan vao tai ve", arguments[1]);
+          if (person === null) return;
+        }
+        return proxied.apply(this, [].slice.call(arguments));
+    };
+    document.getElementById('nav-tab-chap').click();
 
   $download.insertAfter('#suggest-book');
   $download.one('click contextmenu', function (e) {
