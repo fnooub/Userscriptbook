@@ -32,7 +32,7 @@
     function downloadFail(err) {
         $downloadStatus('red');
         titleError.push(chapTitle);
-		
+
 		txt += LINE2 + url + LINE2;
 
         if (debugLevel == 2) console.log('%cError: ' + url, 'color:red;');
@@ -67,7 +67,7 @@
         }
 
         if (titleError.length) {
-            
+
 			titleError = LINE + 'Các chương lỗi: ' + titleError.join(', ') + LINE;
 
             if (debugLevel > 0) console.warn('Các chương lỗi:', titleError);
@@ -114,7 +114,7 @@
                     $notContent = $chapter.find('iframe, script, style, a, div, p:has(a[href*="metruyenchu.com"])');
 
                 if (endDownload) return;
-                
+
                 chapTitle = $data.find('.nh-read__title').text().trim();
 
                 if (!$chapter.length) {
@@ -123,9 +123,9 @@
                     $downloadStatus('yellow');
 
                     txt += LINE2 + chapTitle.toUpperCase() + LINE;
-                    
+
                     if ($notContent.length) $notContent.remove();
-					
+
                         $chapter = $chapter.html().replace(/\r?\n+/g, ' ');
                         $chapter = $chapter.replace(/<br\s*[\/]?>/gi, '\n');
                         $chapter = $chapter.replace(/<(p|div)[^>]*>/gi, '').replace(/<\/(p|div)>/gi, '\n\n');
@@ -195,8 +195,7 @@
     window.XMLHttpRequest.prototype.open = function() {
         console.log( arguments );
         if (arguments[1].includes('v2/chapters') === true) {
-          var person = prompt("Copy api, chuot phai dan vao tai ve", arguments[1]);
-          if (person === null) return;
+          $( ".list-unstyled.mb-4" ).replaceWith( arguments[1] );
         }
         return proxied.apply(this, [].slice.call(arguments));
     };
