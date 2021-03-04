@@ -33,7 +33,7 @@
         $downloadStatus('red');
         titleError.push(chapTitle);
 
-		txt += LINE2 + url + LINE2;
+        txt += LINE2 + url + LINE2;
 
         if (debugLevel == 2) console.log('%cError: ' + url, 'color:red;');
         if (debugLevel > 0) console.error(err);
@@ -68,7 +68,7 @@
 
         if (titleError.length) {
 
-			titleError = LINE + 'Các chương lỗi: ' + titleError.join(', ') + LINE;
+            titleError = LINE + 'Các chương lỗi: ' + titleError.join(', ') + LINE;
 
             if (debugLevel > 0) console.warn('Các chương lỗi:', titleError);
         } else {
@@ -77,7 +77,7 @@
 
 
             if (begin !== end) beginEnd = LINE2 + 'Từ [' + begin + '] đến [' + end + ']';
-			// data
+            // data
             txt = ebookTitle.toUpperCase() + LINE + ebookAuthor + LINE + ebookType + beginEnd + titleError + creditsTxt + txt;
 
             fileName += '.txt';
@@ -102,8 +102,8 @@
     }
 
     function getContent() {
-	    if (endDownload) return;
-	    chapId = chapList[count];
+        if (endDownload) return;
+        chapId = chapList[count];
 
         GM_xmlhttpRequest({
             method: 'GET',
@@ -145,11 +145,11 @@
                 $download.text('Đang tải chương: ' + count);
                 document.title = '[' + count + '] ' + pageName;
 
-				if (count >= chapListSize) {
-		          saveEbook();
-		        } else {
-		          getContent();
-		        }
+                if (count >= chapListSize) {
+                  saveEbook();
+                } else {
+                  getContent();
+                }
             },
             onerror: function(err) {
                 downloadFail(err);
@@ -174,12 +174,12 @@
         $win = $(window),
 
         $download = $('<a>', {
-			style: 'background-color:lightblue;',
+            style: 'background-color:lightblue;',
             href: '#download',
             text: 'Tải xuống'
         }),
         $downloadStatus = function(status) {
-        	$download.css("background-color", "").css("background-color", status);
+            $download.css("background-color", "").css("background-color", status);
         },
 
         count = 0,
@@ -187,15 +187,15 @@
         end = '',
 
         titleError = [],
-		chapList = [],
-		chapListSize = 0,
-		chapId = '';
+        chapList = [],
+        chapListSize = 0,
+        chapId = '';
     // lay api thu cong
     var proxied = window.XMLHttpRequest.prototype.open;
     window.XMLHttpRequest.prototype.open = function() {
         console.log( arguments );
         if (arguments[1].includes('v2/chapters') === true) {
-          $( ".list-unstyled.mb-4" ).replaceWith( arguments[1] );
+            $( '#nav-chap' ).replaceWith( '<p><input type="text" value="' + arguments[1] + '" style="width: 100%"></p>' );
         }
         return proxied.apply(this, [].slice.call(arguments));
     };
