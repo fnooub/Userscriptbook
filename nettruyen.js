@@ -62,7 +62,7 @@
 			'https://res.cloudinary.com/fivegins/image/upload/v1617944524/luufiles/84332_npyjem.jpg',
 			'https://res.cloudinary.com/fivegins/image/upload/v1617944525/luufiles/37ln1x_n7adcu.jpg'
 		],
-		imgFooter = '<img src="' + randomArray(imgFooterRandom) + '">',
+		imgFooter = '<img src="<img src="http://res.cloudinary.com/fivegins/image/upload/v1619098874/luufiles/Untitled-1_iatp7a.png">',
 		imgBanner = '<img src="http://res.cloudinary.com/fivegins/image/upload/v1617945591/luufiles/footer_pspnqv.jpg">';
 
 	$download.insertAfter('h1');
