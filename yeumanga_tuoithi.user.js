@@ -5,6 +5,7 @@
 // @description  try to take over the world!
 // @author       You
 // @match        http://yeumanhua.com/*.html
+// @match        https://yeumanhua.com/*.html
 // @require      https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js
 // @grant        none
 // ==/UserScript==
