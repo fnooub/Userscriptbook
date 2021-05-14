@@ -19,9 +19,9 @@
 		return '<div class="anh"><img src="' + this.src + '" alt="Girl in a jacket" width="200"></div><br><br><br></br>';
 	});
 
-	$("").hover(function(){
+	$(".anh").hover(function(){
 		$(this).css("background-color", "yellow");
-	};
+	});
 
 	$(".anh").css("background-color", "blue");
 
